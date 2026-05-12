@@ -1,0 +1,1438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SKU Ops — Productivity Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #0d0f12;
+  --bg2: #13161b;
+  --bg3: #1a1e25;
+  --bg4: #222730;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --text: #e8eaf0;
+  --text2: #8b90a0;
+  --text3: #545869;
+  --accent: #4f8ef7;
+  --accent2: #2d6be4;
+  --green: #34c77b;
+  --green-bg: rgba(52,199,123,0.1);
+  --amber: #f5a623;
+  --amber-bg: rgba(245,166,35,0.1);
+  --red: #f25c5c;
+  --red-bg: rgba(242,92,92,0.1);
+  --blue-bg: rgba(79,142,247,0.1);
+  --r: 10px;
+  --r-sm: 6px;
+  font-size: 14px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 10px; }
+
+/* LAYOUT */
+.app { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+.sidebar { background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.main { overflow-y: auto; }
+
+/* SIDEBAR */
+.sidebar-logo { padding: 24px 20px 20px; border-bottom: 1px solid var(--border); }
+.logo-mark { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; color: var(--accent); letter-spacing: 0.12em; text-transform: uppercase; }
+.logo-title { font-size: 15px; font-weight: 600; color: var(--text); margin-top: 2px; }
+.sidebar-nav { padding: 16px 12px; flex: 1; }
+.nav-label { font-size: 10px; font-weight: 500; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; padding: 0 8px; margin: 16px 0 6px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--r-sm); cursor: pointer; font-size: 13px; color: var(--text2); transition: all 0.15s; margin-bottom: 2px; border: none; background: none; width: 100%; text-align: left; }
+.nav-item:hover { background: var(--bg3); color: var(--text); }
+.nav-item.active { background: var(--blue-bg); color: var(--accent); }
+.nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+.sidebar-footer { padding: 16px; border-top: 1px solid var(--border); }
+.date-badge { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text3); }
+
+/* TOPBAR */
+.topbar { display: flex; align-items: center; justify-content: space-between; padding: 18px 28px; border-bottom: 1px solid var(--border); background: var(--bg); position: sticky; top: 0; z-index: 10; }
+.page-title { font-size: 18px; font-weight: 600; }
+.page-sub { font-size: 12px; color: var(--text2); margin-top: 1px; }
+.topbar-actions { display: flex; gap: 8px; align-items: center; }
+
+/* CONTENT */
+.content { padding: 24px 28px; }
+.section { display: none; }
+.section.active { display: block; }
+
+/* METRIC CARDS */
+.metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+.metric-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 18px 20px; position: relative; overflow: hidden; }
+.metric-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: var(--r) var(--r) 0 0; }
+.metric-card.blue::before { background: var(--accent); }
+.metric-card.green::before { background: var(--green); }
+.metric-card.amber::before { background: var(--amber); }
+.metric-card.red::before { background: var(--red); }
+.metric-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+.metric-value { font-size: 28px; font-weight: 600; line-height: 1; }
+.metric-value.blue { color: var(--accent); }
+.metric-value.green { color: var(--green); }
+.metric-value.amber { color: var(--amber); }
+.metric-value.red { color: var(--red); }
+.metric-sub { font-size: 11px; color: var(--text3); margin-top: 6px; }
+
+/* CARDS */
+.card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); margin-bottom: 16px; overflow: hidden; }
+.card-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.card-title { font-size: 13px; font-weight: 500; color: var(--text); }
+.card-body { padding: 20px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+/* TABLES */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead th { padding: 10px 14px; text-align: left; font-size: 10px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); background: var(--bg3); }
+tbody td { padding: 11px 14px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: var(--bg3); }
+
+/* BADGES */
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 100px; font-size: 11px; font-weight: 500; }
+.badge-blue { background: var(--blue-bg); color: var(--accent); }
+.badge-green { background: var(--green-bg); color: var(--green); }
+.badge-amber { background: var(--amber-bg); color: var(--amber); }
+.badge-red { background: var(--red-bg); color: var(--red); }
+.badge-gray { background: var(--bg4); color: var(--text2); }
+
+/* PROGRESS BAR */
+.acc-bar { height: 4px; background: var(--bg4); border-radius: 2px; overflow: hidden; margin-top: 4px; min-width: 80px; }
+.acc-fill { height: 100%; border-radius: 2px; transition: width 0.4s; }
+
+/* FORMS */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group label { font-size: 11px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; }
+input, select, textarea { background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--r-sm); padding: 9px 12px; font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--text); width: 100%; transition: border-color 0.15s; }
+input::placeholder { color: var(--text3); }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(79,142,247,0.15); }
+select option { background: var(--bg3); }
+
+/* BUTTONS */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: var(--r-sm); font-size: 13px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.15s; border: 1px solid var(--border2); background: var(--bg3); color: var(--text); }
+.btn:hover { background: var(--bg4); border-color: var(--border2); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent2); border-color: var(--accent2); }
+.btn-danger { background: var(--red-bg); border-color: transparent; color: var(--red); padding: 5px 10px; font-size: 11px; }
+.btn-danger:hover { background: rgba(242,92,92,0.2); }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-ghost { background: transparent; border-color: transparent; color: var(--text2); }
+.btn-ghost:hover { background: var(--bg3); color: var(--text); }
+.form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+
+/* FILTER ROW */
+.filter-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+.filter-row select, .filter-row input { width: auto; min-width: 130px; }
+.filter-label { font-size: 11px; color: var(--text3); }
+
+/* STEP DOTS */
+.step-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 5px; }
+
+/* POC AVATAR */
+.avatar { width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+
+/* CHIP LIST */
+.chip-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; background: var(--bg3); border: 1px solid var(--border); border-radius: 100px; font-size: 12px; color: var(--text2); }
+.chip-remove { cursor: pointer; color: var(--text3); font-size: 14px; line-height: 1; }
+.chip-remove:hover { color: var(--red); }
+
+/* EMPTY */
+.empty { text-align: center; padding: 40px 20px; color: var(--text3); font-size: 13px; }
+.empty svg { width: 32px; height: 32px; margin: 0 auto 10px; display: block; opacity: 0.3; }
+
+/* NOTIFICATION */
+.toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--r); padding: 12px 18px; font-size: 13px; color: var(--text); z-index: 1000; opacity: 0; transform: translateY(10px); transition: all 0.25s; pointer-events: none; }
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.success { border-left: 3px solid var(--green); }
+.toast.error { border-left: 3px solid var(--red); }
+
+/* CHART CONTAINERS */
+.chart-wrap { position: relative; }
+
+/* INLINE MONO */
+.mono { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text2); }
+
+/* RANK COL */
+.rank { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text3); width: 24px; text-align: center; }
+
+/* SECTION DIVIDER */
+.section-label { font-size: 10px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px; }
+
+/* ANIMATIONS */
+@keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+.section.active { animation: fadeIn 0.2s ease; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo" style="padding:14px 16px 14px;">
+      <img src="data:image/png;base64,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" alt="Jumbotail | SOLV" style="width:100%;max-width:172px;height:auto;display:block;margin-bottom:10px;filter:brightness(1.05);" />
+      <div class="logo-mark">SKU Ops</div>
+      <div class="logo-title">Productivity Tracker</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-label">Analytics</div>
+      <button class="nav-item active" onclick="nav('dashboard')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-item" onclick="nav('records')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        All Records
+      </button>
+      <div class="nav-label">Log Work</div>
+      <button class="nav-item" onclick="nav('log')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/></svg>
+        Log SKU Work
+      </button>
+      <button class="nav-item" onclick="nav('qc')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        Log QC Error
+      </button>
+      <div class="nav-label">Configuration</div>
+      <button class="nav-item" onclick="nav('settings')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        Team Setup
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="date-badge" id="sidebar-date"></div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div>
+        <div class="page-title" id="page-title">Dashboard</div>
+        <div class="page-sub" id="page-sub">Overview of team productivity &amp; accuracy</div>
+      </div>
+      <div class="topbar-actions">
+        <span id="sync-status" style="font-size:11px;color:#545869;display:flex;align-items:center"></span>
+        <button class="btn btn-sm btn-ghost" onclick="manualRefresh()" title="Refresh data from database">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+          Refresh
+        </button>
+        <button class="btn btn-sm btn-ghost" onclick="exportCSV()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          Export CSV
+        </button>
+        <button class="btn btn-sm btn-primary" onclick="nav('log')">+ Log Work</button>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="sec-dashboard" class="section content active">
+      <div class="filter-row" style="margin-bottom:20px;flex-wrap:wrap;gap:10px">
+        <span class="filter-label">Period:</span>
+        <select id="dash-period" onchange="onPeriodChange()">
+          <option value="today">Today</option>
+          <option value="week">This week</option>
+          <option value="month" selected>This month</option>
+          <option value="year">This year</option>
+          <option value="specific_month">Specific month</option>
+          <option value="custom">Custom date range</option>
+          <option value="all">All time</option>
+        </select>
+
+        <!-- Specific month picker -->
+        <span id="specific-month-wrap" style="display:none;align-items:center;gap:6px">
+          <span class="filter-label">Month:</span>
+          <input type="month" id="dash-specific-month" onchange="renderDashboard()"
+            style="width:150px;padding:7px 10px;font-size:13px" />
+        </span>
+
+        <!-- Custom date range -->
+        <span id="custom-range-wrap" style="display:none;align-items:center;gap:6px">
+          <span class="filter-label">From:</span>
+          <input type="date" id="dash-from" onchange="renderDashboard()" style="width:140px;padding:7px 10px;font-size:13px" />
+          <span class="filter-label">To:</span>
+          <input type="date" id="dash-to" onchange="renderDashboard()" style="width:140px;padding:7px 10px;font-size:13px" />
+        </span>
+
+        <span class="filter-label">Category:</span>
+        <select id="dash-category" onchange="renderDashboard()">
+          <option value="">All categories</option>
+        </select>
+      </div>
+
+      <div class="metrics-row" id="dash-metrics"></div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">POC performance</div>
+            <span class="badge badge-blue" id="dash-poc-count"></span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th style="width:30px">#</th>
+                <th>POC</th>
+                <th>SKUs done</th>
+                <th>Errors</th>
+                <th>Accuracy</th>
+                <th>Avg/day</th>
+              </tr></thead>
+              <tbody id="dash-poc-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Category breakdown</div></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Category</th>
+                <th>SKUs</th>
+                <th>Errors</th>
+                <th>Accuracy</th>
+                <th>Tickets</th>
+              </tr></thead>
+              <tbody id="dash-cat-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><div class="card-title" id="chart-daily-title">Daily SKU output</div></div>
+          <div class="card-body">
+            <div class="chart-wrap" style="height:200px"><canvas id="chart-daily" role="img" aria-label="Daily SKU output bar chart">Daily SKU counts over last 14 days</canvas></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Error distribution by type</div></div>
+          <div class="card-body">
+            <div class="chart-wrap" style="height:200px"><canvas id="chart-errors" role="img" aria-label="Error type distribution chart">Error distribution chart</canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">Recent QC errors</div></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Date</th>
+              <th>Working POC</th>
+              <th>Ticket</th>
+              <th>Category</th>
+              <th>Error SKUs</th>
+              <th>Error type</th>
+              <th>Found by</th>
+            </tr></thead>
+            <tbody id="dash-qc-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOG WORK -->
+    <div id="sec-log" class="section content">
+      <div class="grid-2" style="align-items:start">
+        <div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">New SKU work entry</div></div>
+            <div class="card-body">
+              <div class="form-grid" style="margin-bottom:14px">
+                <div class="form-group"><label>Date</label><input type="date" id="e-date" /></div>
+                <div class="form-group"><label>POC (working)</label><select id="e-poc"><option value="">Select POC</option></select></div>
+              </div>
+              <div class="form-grid" style="margin-bottom:14px">
+                <div class="form-group"><label>Ticket ID</label><input type="text" id="e-ticket" placeholder="e.g. FD-1042" /></div>
+                <div class="form-group"><label>Category</label><select id="e-cat"><option value="">Select category</option></select></div>
+              </div>
+              <div class="form-grid-3" style="margin-bottom:14px">
+                <div class="form-group"><label>SKUs in ticket</label><input type="number" id="e-tskus" placeholder="Total" min="0" /></div>
+                <div class="form-group"><label>SKUs processed</label><input type="number" id="e-pskus" placeholder="By this POC" min="0" /></div>
+                <div class="form-group"><label>Step completed</label>
+                  <select id="e-step">
+                    <option value="">Select step</option>
+                    <option value="1">1 – Validation</option>
+                    <option value="2">2 – JPIN lookup</option>
+                    <option value="3">3 – JPIN creation</option>
+                    <option value="4">4 – QC &amp; L4 prep</option>
+                    <option value="5">5 – Sent to QC POC</option>
+                    <option value="6">6 – QC approved</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group" style="margin-bottom:14px"><label>Notes</label><input type="text" id="e-notes" placeholder="Optional remarks..." /></div>
+              <div class="form-actions">
+                <button class="btn btn-ghost" onclick="clearLogForm()">Clear</button>
+                <button class="btn btn-primary" onclick="addEntry()">Save entry</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Today's entries</div>
+              <span class="badge badge-blue" id="today-count">0 entries</span>
+            </div>
+            <div class="table-wrap" id="today-wrap">
+              <table>
+                <thead><tr>
+                  <th>Ticket</th><th>POC</th><th>Category</th><th>SKUs</th><th>Step</th><th></th>
+                </tr></thead>
+                <tbody id="today-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">Today's team totals</div></div>
+            <div id="today-stats" class="card-body"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- QC ERRORS -->
+    <div id="sec-qc" class="section content">
+      <div class="grid-2" style="align-items:start">
+        <div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">Log QC error</div></div>
+            <div class="card-body">
+              <div class="form-grid" style="margin-bottom:14px">
+                <div class="form-group"><label>Date</label><input type="date" id="q-date" /></div>
+                <div class="form-group"><label>Working POC (made error)</label><select id="q-poc"><option value="">Select POC</option></select></div>
+              </div>
+              <div class="form-grid" style="margin-bottom:14px">
+                <div class="form-group"><label>QC POC (found error)</label><select id="q-reviewer"><option value="">Select POC</option></select></div>
+                <div class="form-group"><label>Ticket ID</label><input type="text" id="q-ticket" placeholder="e.g. FD-1042" /></div>
+              </div>
+              <div class="form-grid-3" style="margin-bottom:14px">
+                <div class="form-group"><label>Category</label><select id="q-cat"><option value="">Select</option></select></div>
+                <div class="form-group"><label>SKUs with errors</label><input type="number" id="q-eskus" placeholder="Count" min="0" /></div>
+                <div class="form-group"><label>Error type</label>
+                  <select id="q-etype">
+                    <option value="">Select type</option>
+                    <option>Missing mandatory field</option>
+                    <option>Incorrect data</option>
+                    <option>Wrong JPIN</option>
+                    <option>PAV mismatch</option>
+                    <option>Softline mismatch</option>
+                    <option>L4 file error</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group" style="margin-bottom:0"><label>Description</label><input type="text" id="q-desc" placeholder="Brief description of the issue..." /></div>
+              <div class="form-actions">
+                <button class="btn btn-ghost" onclick="clearQCForm()">Clear</button>
+                <button class="btn btn-primary" onclick="addQCEntry()">Log error</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Recent QC errors</div>
+              <span class="badge badge-red" id="qc-count">0 errors</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>Date</th><th>POC</th><th>Ticket</th><th>Err SKUs</th><th>Type</th><th></th>
+                </tr></thead>
+                <tbody id="qc-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ALL RECORDS -->
+    <div id="sec-records" class="section content">
+      <div class="filter-row">
+        <span class="filter-label">POC:</span>
+        <select id="r-poc" onchange="renderRecords()"><option value="">All POCs</option></select>
+        <span class="filter-label">Category:</span>
+        <select id="r-cat" onchange="renderRecords()"><option value="">All categories</option></select>
+        <span class="filter-label">From:</span>
+        <input type="date" id="r-from" style="min-width:0;width:140px" onchange="renderRecords()" />
+        <span class="filter-label">To:</span>
+        <input type="date" id="r-to" style="min-width:0;width:140px" onchange="renderRecords()" />
+        <button class="btn btn-sm btn-ghost" onclick="clearRecordFilters()">Clear filters</button>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Work log <span class="mono" id="r-count"></span></div>
+          <button class="btn btn-sm" onclick="exportCSV()">Export CSV</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Date</th><th>POC</th><th>Ticket ID</th><th>Category</th>
+              <th>SKUs in ticket</th><th>SKUs processed</th><th>Step</th><th>Notes</th><th></th>
+            </tr></thead>
+            <tbody id="r-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="sec-settings" class="section content">
+      <div class="grid-2" style="align-items:start">
+        <div class="card">
+          <div class="card-header"><div class="card-title">Team members (POCs)</div></div>
+          <div class="card-body">
+            <div class="chip-list" id="poc-chips"></div>
+            <div style="display:flex;gap:8px">
+              <input type="text" id="new-poc" placeholder="Add POC name..." style="flex:1" onkeydown="if(event.key==='Enter')addPOC()" />
+              <button class="btn btn-primary" onclick="addPOC()">Add</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Categories</div></div>
+          <div class="card-body">
+            <div class="chip-list" id="cat-chips"></div>
+            <div style="display:flex;gap:8px">
+              <input type="text" id="new-cat" placeholder="Add category..." style="flex:1" onkeydown="if(event.key==='Enter')addCategory()" />
+              <button class="btn btn-primary" onclick="addCategory()">Add</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Data management</div></div>
+        <div class="card-body" style="display:flex;align-items:center;gap:16px">
+          <button class="btn btn-danger" onclick="clearAllData()">Clear all work log &amp; QC data</button>
+          <span style="font-size:12px;color:var(--text3)">Removes all entries. POCs and categories are preserved.</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Settings sync debug</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-sm" onclick="debugSettings()">Run Diagnostics</button>
+            <button class="btn btn-sm btn-primary" onclick="forceResaveSettings()">Force Re-save Settings</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <pre id="debug-out" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);white-space:pre-wrap;line-height:1.7;min-height:40px">Click "Run Diagnostics" to check Supabase settings sync…</pre>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── PASTE YOUR SUPABASE CREDENTIALS HERE ──────────────────
+const SUPA_URL = "https://dcpyztjddcsvkzgqwsai.supabase.co";
+const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjcHl6dGpkZGNzdmt6Z3F3c2FpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1NjY1ODYsImV4cCI6MjA5NDE0MjU4Nn0.Qmbajqvbb5GQN891tMwoFrFcf_iQK_3JuoSPfp_vpjg";
+// ──────────────────────────────────────────────────────────
+
+// ─── SUPABASE API HELPERS ────────────────────────────────
+async function sbFetch(path, method='GET', body=null) {
+  const opts = {
+    method,
+    headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': method === 'POST' ? 'return=representation' : ''
+    }
+  };
+  if(body) opts.body = JSON.stringify(body);
+  const res = await fetch(SUPA_URL + '/rest/v1/' + path, opts);
+  if(!res.ok) { const err = await res.text(); throw new Error(err); }
+  if(res.status === 204) return null;
+  return res.json();
+}
+
+async function dbGetEntries() {
+  const rows = await sbFetch('work_logs?select=*&order=entry_date.desc,id.desc');
+  return rows.map(r => ({
+    id:          r.id,
+    date:        r.entry_date,
+    poc:         r.poc,
+    ticket:      r.ticket,
+    category:    r.category || '',
+    ticketSkus:  r.ticket_skus || 0,
+    processed:   r.processed || 0,
+    step:        r.step || '',
+    stepHistory: r.step_history || [],
+    notes:       r.notes || ''
+  }));
+}
+
+async function dbInsertEntry(e) {
+  const rows = await sbFetch('work_logs', 'POST', {
+    entry_date:   e.date,
+    poc:          e.poc,
+    ticket:       e.ticket,
+    category:     e.category,
+    ticket_skus:  e.ticketSkus,
+    processed:    e.processed,
+    step:         e.step,
+    step_history: e.stepHistory,
+    notes:        e.notes
+  });
+  return rows[0];
+}
+
+async function dbUpdateEntryStep(id, step, stepHistory) {
+  await sbFetch(`work_logs?id=eq.${id}`, 'PATCH', {
+    step,
+    step_history: stepHistory
+  });
+}
+
+async function dbDeleteEntry(id) {
+  await sbFetch(`work_logs?id=eq.${id}`, 'DELETE');
+}
+
+async function dbGetQCErrors() {
+  const rows = await sbFetch('qc_errors?select=*&order=error_date.desc,id.desc');
+  return rows.map(r => ({
+    id:          r.id,
+    date:        r.error_date,
+    poc:         r.poc,
+    reviewer:    r.reviewer || '',
+    ticket:      r.ticket,
+    category:    r.category || '',
+    errorSkus:   r.error_skus || 0,
+    errorType:   r.error_type || '',
+    description: r.description || ''
+  }));
+}
+
+async function dbInsertQC(e) {
+  const rows = await sbFetch('qc_errors', 'POST', {
+    error_date:  e.date,
+    poc:         e.poc,
+    reviewer:    e.reviewer,
+    ticket:      e.ticket,
+    category:    e.category,
+    error_skus:  e.errorSkus,
+    error_type:  e.errorType,
+    description: e.description
+  });
+  return rows[0];
+}
+
+async function dbDeleteQC(id) {
+  await sbFetch(`qc_errors?id=eq.${id}`, 'DELETE');
+}
+
+// ─── STATE ───────────────────────────────────────────────
+let S = {
+  pocs: ['Anjali','Rahul','Priya','Deepak','Sneha'],
+  categories: ['Softline','Hardline','Electronics','Fashion','Beauty'],
+  entries: [],
+  qcErrors: []
+};
+
+const COLORS = ['#4f8ef7','#34c77b','#f5a623','#f25c5c','#a78bf7','#38c4c4','#f07dbb','#7dd4a8'];
+const AVATAR_COLORS = ['#2d6be4','#1a8f57','#c47d10','#c43030','#7158d4','#1d9898'];
+
+function today() { return new Date().toISOString().split('T')[0]; }
+
+// ─── SETTINGS DB HELPERS ─────────────────────────────────
+async function dbGetSettings() {
+  try {
+    const rows = await sbFetch('settings?select=*');
+    if(!rows || !rows.length) return null;
+    const out = {};
+    rows.forEach(r => { out[r.key] = r.value; });
+    return out;
+  } catch(e) { return null; }
+}
+
+async function dbSaveSettings() {
+  try {
+    await sbFetch('settings?key=eq.pocs', 'DELETE');
+    await sbFetch('settings?key=eq.categories', 'DELETE');
+    await sbFetch('settings', 'POST', { key: 'pocs', value: S.pocs });
+    await sbFetch('settings', 'POST', { key: 'categories', value: S.categories });
+    console.log('[Settings] Saved to Supabase:', S.pocs, S.categories);
+  } catch(e) {
+    console.error('[Settings] Save error:', e);
+    toast('Settings sync failed — check console', 'error');
+  }
+}
+
+async function syncSettings() {
+  try {
+    const rows = await sbFetch('settings?select=*');
+    console.log('[Settings] Raw rows from Supabase:', rows);
+    if (!rows || !rows.length) { console.warn('[Settings] No rows found in settings table'); return; }
+    rows.forEach(r => {
+      // handle both column names: 'value' and 'values'
+      const val = r.value !== undefined ? r.value : r.values;
+      if (r.key === 'pocs' && Array.isArray(val))       S.pocs       = val;
+      if (r.key === 'categories' && Array.isArray(val)) S.categories = val;
+    });
+    console.log('[Settings] Synced — POCs:', S.pocs, '| Categories:', S.categories);
+    populateAllSelects();
+  } catch(e) {
+    console.error('[Settings] Sync error:', e);
+  }
+}
+
+async function debugSettings() {
+  const out = document.getElementById('debug-out');
+  out.textContent = 'Running…\n';
+  const log = s => { out.textContent += s + '\n'; };
+
+  log('1. Testing Supabase connection…');
+  try {
+    const rows = await sbFetch('settings?select=*');
+    log(`   ✅ Connected. Rows returned: ${rows ? rows.length : 0}`);
+    if (rows && rows.length) {
+      log('   Raw rows:');
+      rows.forEach(r => log('     ' + JSON.stringify(r)));
+    } else {
+      log('   ⚠️  settings table is EMPTY — nothing has been saved yet.');
+    }
+  } catch(e) {
+    log('   ❌ Connection failed: ' + e.message);
+    return;
+  }
+
+  log('\n2. Testing write (save current settings)…');
+  try {
+    await sbFetch('settings?key=eq.__test__', 'DELETE');
+    const res = await sbFetch('settings', 'POST', { key: '__test__', value: ['test'] });
+    log('   ✅ Write succeeded: ' + JSON.stringify(res));
+    await sbFetch('settings?key=eq.__test__', 'DELETE');
+  } catch(e) {
+    log('   ❌ Write failed: ' + e.message);
+    log('   → Check if RLS is OFF on the settings table in Supabase');
+    return;
+  }
+
+  log('\n3. Current in-memory state:');
+  log('   POCs: ' + JSON.stringify(S.pocs));
+  log('   Categories: ' + JSON.stringify(S.categories));
+
+  log('\n✅ All checks passed. If peers still can\'t see changes, check their browser console for sync errors.');
+}
+
+async function forceResaveSettings() {
+  const out = document.getElementById('debug-out');
+  out.textContent = 'Force re-saving current POCs & categories to Supabase…\n';
+  try {
+    await dbSaveSettings();
+    out.textContent += '✅ Done! POCs: ' + JSON.stringify(S.pocs) + '\nCategories: ' + JSON.stringify(S.categories);
+    toast('Settings force-saved ✓');
+  } catch(e) {
+    out.textContent += '❌ Failed: ' + e.message;
+  }
+}
+
+async function syncFromDB() {
+  setStatus('Syncing…', 'syncing');
+  try {
+    const [entries, qcErrors] = await Promise.all([dbGetEntries(), dbGetQCErrors()]);
+    S.entries  = entries;
+    S.qcErrors = qcErrors;
+    await syncSettings();
+    setStatus('Live', 'live');
+    return true;
+  } catch(err) {
+    setStatus('Offline – check credentials', 'error');
+    console.error('Supabase sync error:', err);
+    return false;
+  }
+}
+
+// ─── STATUS INDICATOR ────────────────────────────────────
+function setStatus(msg, state) {
+  const el = document.getElementById('sync-status');
+  if(!el) return;
+  const colors = { live:'#34c77b', syncing:'#f5a623', error:'#f25c5c' };
+  el.innerHTML = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${colors[state]||'#545869'};margin-right:5px"></span>${msg}`;
+}
+
+// ─── CHARTS ──────────────────────────────────────────────
+let chartDaily = null, chartErrors = null;
+
+function destroyChart(c) { if(c) { try { c.destroy(); } catch(e){} } }
+
+function buildDailyChart(labels, data, title) {
+  destroyChart(chartDaily);
+  const titleEl = document.getElementById('chart-daily-title');
+  if(titleEl && title) titleEl.textContent = title;
+  const ctx = document.getElementById('chart-daily').getContext('2d');
+  chartDaily = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'SKUs processed',
+        data,
+        backgroundColor: 'rgba(79,142,247,0.7)',
+        borderColor: '#4f8ef7',
+        borderWidth: 1,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#545869', font: { size: 10 }, autoSkip: false, maxRotation: 45 }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#545869', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.06)' }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function buildErrorChart(labels, data) {
+  destroyChart(chartErrors);
+  if(!labels.length) return;
+  const ctx = document.getElementById('chart-errors').getContext('2d');
+  chartErrors = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: COLORS.slice(0, labels.length),
+        borderWidth: 0,
+        hoverOffset: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: { color: '#8b90a0', font: { size: 11 }, boxWidth: 10, padding: 10 }
+        }
+      }
+    }
+  });
+}
+
+// ─── NAVIGATION ──────────────────────────────────────────
+const pageInfo = {
+  dashboard: ['Dashboard', 'Overview of team productivity & accuracy'],
+  log: ['Log SKU Work', 'Record daily SKU processing activity'],
+  qc: ['Log QC Error', 'Record quality control findings'],
+  records: ['All Records', 'Full filterable work log'],
+  settings: ['Team Setup', 'Manage POCs and categories']
+};
+
+function nav(page) {
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll(`[onclick="nav('${page}')"]`).forEach(b => b.classList.add('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('sec-' + page).classList.add('active');
+  const [title, sub] = pageInfo[page];
+  document.getElementById('page-title').textContent = title;
+  document.getElementById('page-sub').textContent = sub;
+  if(page === 'dashboard') renderDashboard();
+  if(page === 'records') renderRecords();
+  if(page === 'settings') renderSettings();
+  if(page === 'qc') renderQCList();
+  if(page === 'log') renderTodayEntries();
+}
+
+// ─── SELECTS ─────────────────────────────────────────────
+function fillSelect(id, items, placeholder, withAll) {
+  const el = document.getElementById(id); if(!el) return;
+  const v = el.value;
+  el.innerHTML = (withAll ? `<option value="">All ${placeholder}</option>` : `<option value="">${placeholder}</option>`) +
+    items.map(i => `<option value="${i}">${i}</option>`).join('');
+  if(v) el.value = v;
+}
+
+function populateAllSelects() {
+  fillSelect('e-poc', S.pocs, 'Select POC', false);
+  fillSelect('e-cat', S.categories, 'Select category', false);
+  fillSelect('q-poc', S.pocs, 'Select POC', false);
+  fillSelect('q-reviewer', S.pocs, 'Select POC', false);
+  fillSelect('q-cat', S.categories, 'Select category', false);
+  fillSelect('dash-category', S.categories, 'categories', true);
+  fillSelect('r-poc', S.pocs, 'POCs', true);
+  fillSelect('r-cat', S.categories, 'categories', true);
+}
+
+// ─── TOAST ───────────────────────────────────────────────
+function toast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast ${type} show`;
+  setTimeout(() => t.className = 'toast', 2500);
+}
+
+// ─── STEP HELPERS ─────────────────────────────────────────
+const STEPS = {1:'Validation',2:'JPIN lookup',3:'JPIN creation',4:'QC & L4 prep',5:'Sent to QC',6:'QC approved'};
+const STEP_BADGE = {1:'badge-gray',2:'badge-blue',3:'badge-amber',4:'badge-blue',5:'badge-amber',6:'badge-green'};
+
+function stepBadge(s) {
+  if(!s) return '<span class="badge badge-gray">—</span>';
+  return `<span class="badge ${STEP_BADGE[s]}" style="font-size:10px">S${s}: ${STEPS[s]}</span>`;
+}
+
+// Inline step-update control rendered in tables
+function stepUpdateCell(entry) {
+  const cur = entry.step;
+  const history = entry.stepHistory || [];
+  const histTip = history.map(h=>`S${h.step} – ${STEPS[h.step]} (${h.at})`).join('&#10;');
+  const opts = Object.entries(STEPS).map(([k,v]) =>
+    `<option value="${k}" ${cur==k?'selected':''}>${k} – ${v}</option>`
+  ).join('');
+  return `
+    <div style="display:flex;align-items:center;gap:6px">
+      <div title="${histTip}" style="cursor:default">
+        ${cur ? `<span class="badge ${STEP_BADGE[cur]}" style="font-size:10px">S${cur}: ${STEPS[cur]}</span>` : '<span class="badge badge-gray" style="font-size:10px">Not set</span>'}
+      </div>
+      <select onchange="updateEntryStep(${entry.id}, this.value); this.blur()"
+        style="width:auto;padding:3px 6px;font-size:11px;border-radius:4px;min-width:0;border-color:rgba(255,255,255,0.15)">
+        <option value="">Update ▾</option>
+        ${opts}
+      </select>
+    </div>
+    ${history.length > 0 ? `<div style="font-size:10px;color:#545869;margin-top:3px">${history.length} update${history.length>1?'s':''} logged</div>` : ''}
+  `;
+}
+
+async function updateEntryStep(id, newStep) {
+  if(!newStep) return;
+  const entry = S.entries.find(e => e.id === id);
+  if(!entry) return;
+  if(!entry.stepHistory) entry.stepHistory = [];
+  const now = new Date();
+  const ts = now.toLocaleDateString('en-IN',{day:'numeric',month:'short'}) + ' ' + now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  if(entry.step && entry.step !== newStep) {
+    entry.stepHistory.push({ step: entry.step, at: ts, changedTo: newStep });
+  } else if(!entry.step) {
+    entry.stepHistory.push({ step: newStep, at: ts, changedTo: newStep });
+  }
+  entry.step = newStep;
+  try {
+    await dbUpdateEntryStep(id, newStep, entry.stepHistory);
+    renderTodayEntries(); renderRecords();
+    toast(`Step updated → S${newStep}: ${STEPS[newStep]} ✓`);
+  } catch(err) { toast('Step update failed', 'error'); }
+}
+
+// ─── AVATAR ──────────────────────────────────────────────
+function avatar(name, size=28) {
+  const idx = S.pocs.indexOf(name) % AVATAR_COLORS.length;
+  const c = AVATAR_COLORS[Math.max(0,idx)];
+  const init = name.slice(0,2).toUpperCase();
+  return `<span class="avatar" style="width:${size}px;height:${size}px;background:${c}22;color:${c};font-size:${size*0.38}px">${init}</span>`;
+}
+
+// ─── PERIOD FILTER ────────────────────────────────────────
+function onPeriodChange() {
+  const p = document.getElementById('dash-period').value;
+  const smWrap = document.getElementById('specific-month-wrap');
+  const crWrap = document.getElementById('custom-range-wrap');
+  smWrap.style.display = p === 'specific_month' ? 'flex' : 'none';
+  crWrap.style.display = p === 'custom' ? 'flex' : 'none';
+  // set defaults
+  if(p === 'specific_month' && !document.getElementById('dash-specific-month').value) {
+    const now = new Date();
+    document.getElementById('dash-specific-month').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  }
+  if(p === 'custom') {
+    const now = new Date(); const t = today();
+    if(!document.getElementById('dash-from').value) {
+      const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+      document.getElementById('dash-from').value = firstOfMonth;
+    }
+    if(!document.getElementById('dash-to').value) {
+      document.getElementById('dash-to').value = t;
+    }
+  }
+  renderDashboard();
+}
+
+function inPeriod(dateStr, period) {
+  const now = new Date(); const t = today();
+  if(period === 'today') return dateStr === t;
+  if(period === 'week') {
+    const d = new Date(dateStr+'T00:00:00');
+    const start = new Date(now);
+    const day = now.getDay();
+    start.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+    start.setHours(0,0,0,0);
+    return d >= start;
+  }
+  if(period === 'month') return dateStr.startsWith(now.toISOString().slice(0,7));
+  if(period === 'year') return dateStr.startsWith(now.getFullYear().toString());
+  if(period === 'specific_month') {
+    const sm = document.getElementById('dash-specific-month').value;
+    return sm ? dateStr.startsWith(sm) : false;
+  }
+  if(period === 'custom') {
+    const from = document.getElementById('dash-from').value;
+    const to   = document.getElementById('dash-to').value;
+    if(from && dateStr < from) return false;
+    if(to   && dateStr > to)   return false;
+    return true;
+  }
+  return true;
+}
+
+// ─── DASHBOARD ───────────────────────────────────────────
+function renderDashboard() {
+  const period = document.getElementById('dash-period').value;
+  const catF   = document.getElementById('dash-category').value;
+  let entries  = S.entries.filter(e => inPeriod(e.date, period) && (!catF || e.category === catF));
+  let errors   = S.qcErrors.filter(e => inPeriod(e.date, period) && (!catF || e.category === catF));
+
+  const totalSKUs   = entries.reduce((s,e) => s + e.processed, 0);
+  const totalErrors = errors.reduce((s,e) => s + e.errorSkus, 0);
+  const tickets     = new Set(entries.map(e => e.ticket)).size;
+  const accuracy    = totalSKUs > 0 ? Math.max(0, (totalSKUs - totalErrors) / totalSKUs * 100) : null;
+  const accStr      = accuracy !== null ? accuracy.toFixed(1) + '%' : '–';
+  const accClass    = accuracy === null ? '' : accuracy >= 95 ? 'green' : accuracy >= 85 ? 'amber' : 'red';
+
+  document.getElementById('dash-metrics').innerHTML = `
+    <div class="metric-card blue"><div class="metric-label">Total SKUs processed</div><div class="metric-value blue">${totalSKUs.toLocaleString()}</div><div class="metric-sub">${tickets} ticket${tickets!==1?'s':''}</div></div>
+    <div class="metric-card ${accClass||'green'}"><div class="metric-label">Team accuracy</div><div class="metric-value ${accClass||'green'}">${accStr}</div><div class="metric-sub">${totalErrors} error SKUs</div></div>
+    <div class="metric-card red"><div class="metric-label">QC errors found</div><div class="metric-value red">${errors.length}</div><div class="metric-sub">${totalErrors} SKUs flagged</div></div>
+    <div class="metric-card amber"><div class="metric-label">Active POCs</div><div class="metric-value amber">${new Set(entries.map(e=>e.poc)).size}</div><div class="metric-sub">this period</div></div>
+  `;
+
+  // Per POC
+  const pocMap = {};
+  entries.forEach(e => {
+    if(!pocMap[e.poc]) pocMap[e.poc] = {sku:0, errors:0, tickets:new Set(), dates:new Set()};
+    pocMap[e.poc].sku += e.processed;
+    pocMap[e.poc].tickets.add(e.ticket);
+    pocMap[e.poc].dates.add(e.date);
+  });
+  errors.forEach(e => {
+    if(!pocMap[e.poc]) pocMap[e.poc] = {sku:0, errors:0, tickets:new Set(), dates:new Set()};
+    pocMap[e.poc].errors += e.errorSkus;
+  });
+
+  const pocRows = Object.entries(pocMap).filter(([,v])=>v.sku>0||v.errors>0).sort((a,b)=>b[1].sku-a[1].sku);
+  document.getElementById('dash-poc-count').textContent = pocRows.length + ' POCs';
+
+  document.getElementById('dash-poc-tbody').innerHTML = pocRows.length ? pocRows.map(([poc,v], i) => {
+    const acc = v.sku > 0 ? Math.max(0, (v.sku - v.errors) / v.sku * 100) : null;
+    const accStr = acc !== null ? acc.toFixed(1) + '%' : '–';
+    const accBadge = acc===null?'badge-gray':acc>=95?'badge-green':acc>=85?'badge-amber':'badge-red';
+    const fillColor = acc===null?'#545869':acc>=95?'#34c77b':acc>=85?'#f5a623':'#f25c5c';
+    const days = v.dates.size;
+    const avg = days > 0 ? Math.round(v.sku / days) : 0;
+    return `<tr>
+      <td class="rank">${i+1}</td>
+      <td><div style="display:flex;align-items:center;gap:8px">${avatar(poc)}<span>${poc}</span></div></td>
+      <td style="font-weight:600">${v.sku.toLocaleString()}</td>
+      <td style="color:${v.errors>0?'#f25c5c':'#545869'}">${v.errors}</td>
+      <td>
+        <span class="badge ${accBadge}" style="font-size:10px">${accStr}</span>
+        <div class="acc-bar"><div class="acc-fill" style="width:${acc!==null?Math.round(acc):0}%;background:${fillColor}"></div></div>
+      </td>
+      <td class="mono">${avg}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="6" class="empty">No data for this period</td></tr>';
+
+  // Category
+  const catMap = {};
+  entries.forEach(e => {
+    if(!catMap[e.category]) catMap[e.category] = {sku:0,errors:0,tickets:new Set()};
+    catMap[e.category].sku += e.processed;
+    catMap[e.category].tickets.add(e.ticket);
+  });
+  errors.forEach(e => {
+    if(!catMap[e.category]) catMap[e.category] = {sku:0,errors:0,tickets:new Set()};
+    catMap[e.category].errors += e.errorSkus;
+  });
+
+  document.getElementById('dash-cat-tbody').innerHTML = Object.entries(catMap).sort((a,b)=>b[1].sku-a[1].sku).map(([cat,v]) => {
+    const acc = v.sku > 0 ? Math.max(0,(v.sku-v.errors)/v.sku*100) : null;
+    const accStr = acc !== null ? acc.toFixed(1)+'%' : '–';
+    const accBadge = acc===null?'badge-gray':acc>=95?'badge-green':acc>=85?'badge-amber':'badge-red';
+    return `<tr>
+      <td>${cat}</td>
+      <td style="font-weight:600">${v.sku}</td>
+      <td style="color:${v.errors>0?'#f25c5c':'#545869'}">${v.errors}</td>
+      <td><span class="badge ${accBadge}" style="font-size:10px">${accStr}</span></td>
+      <td>${v.tickets.size}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" class="empty">No data</td></tr>';
+
+  // Chart — dynamic based on selected period
+  let chartDays = [], chartLabel = '';
+  const now = new Date();
+
+  if(period === 'today') {
+    chartDays = [today()];
+    chartLabel = 'Daily SKU output (today)';
+  } else if(period === 'week') {
+    const startOfWeek = new Date(now);
+    const day = now.getDay();
+    startOfWeek.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+    startOfWeek.setHours(0,0,0,0);
+    const d = new Date(startOfWeek);
+    while(d.toLocaleDateString('en-CA') <= today()) { chartDays.push(d.toLocaleDateString('en-CA')); d.setDate(d.getDate()+1); }
+    chartLabel = 'Daily SKU output (this week)';
+  } else if(period === 'month') {
+    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const d = new Date(firstOfMonth);
+    while(d.toLocaleDateString('en-CA') <= today()) { chartDays.push(d.toLocaleDateString('en-CA')); d.setDate(d.getDate()+1); }
+    chartLabel = 'Daily SKU output (this month)';
+  } else if(period === 'specific_month') {
+    const sm = document.getElementById('dash-specific-month').value;
+    if(sm) {
+      const [yr, mo] = sm.split('-').map(Number);
+      const daysInMonth = new Date(yr, mo, 0).getDate();
+      for(let i=1; i<=daysInMonth; i++) chartDays.push(yr+'-'+String(mo).padStart(2,'0')+'-'+String(i).padStart(2,'0'));
+      const monthName = new Date(yr, mo-1, 1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+      chartLabel = 'Daily SKU output ('+monthName+')';
+    }
+  } else if(period === 'custom') {
+    const from = document.getElementById('dash-from').value;
+    const to   = document.getElementById('dash-to').value;
+    if(from && to) {
+      const d = new Date(from+'T00:00:00');
+      const end = new Date(to+'T00:00:00');
+      const diffDays = Math.round((end-d)/(1000*60*60*24));
+      if(diffDays <= 60) {
+        while(d <= end) { chartDays.push(d.toISOString().split('T')[0]); d.setDate(d.getDate()+1); }
+        chartLabel = 'Daily SKU output ('+from+' to '+to+')';
+      } else {
+        const months = [];
+        const cur = new Date(new Date(from+'T00:00:00').getFullYear(), new Date(from+'T00:00:00').getMonth(), 1);
+        while(cur <= end) {
+          months.push(cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0'));
+          cur.setMonth(cur.getMonth()+1);
+        }
+        const monthlyData = months.map(m => S.entries.filter(e=>e.date.startsWith(m)&&(!catF||e.category===catF)).reduce((s,e)=>s+e.processed,0));
+        const monthLabels = months.map(m => { const dt = new Date(m+'-01T00:00:00'); return dt.toLocaleDateString('en-IN',{month:'short',year:'2-digit'}); });
+        buildDailyChart(monthLabels, monthlyData, 'Monthly SKU output ('+from+' to '+to+')');
+        chartDays = null;
+      }
+    }
+  } else if(period === 'year') {
+    const months = [];
+    for(let m=0; m<=now.getMonth(); m++) months.push(now.getFullYear()+'-'+String(m+1).padStart(2,'0'));
+    const monthlyData = months.map(m => S.entries.filter(e=>e.date.startsWith(m)&&(!catF||e.category===catF)).reduce((s,e)=>s+e.processed,0));
+    const monthLabels = months.map(m => { const d = new Date(m+'-01T00:00:00'); return d.toLocaleDateString('en-IN',{month:'short',year:'2-digit'}); });
+    buildDailyChart(monthLabels, monthlyData, 'Monthly SKU output (this year)');
+    chartDays = null;
+  } else {
+    const allDates = S.entries.map(e=>e.date).filter(Boolean).sort();
+    if(allDates.length) {
+      const first = new Date(allDates[0]+'T00:00:00');
+      const months = [];
+      const d = new Date(first.getFullYear(), first.getMonth(), 1);
+      while(d <= now) { months.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')); d.setMonth(d.getMonth()+1); }
+      const monthlyData = months.map(m => S.entries.filter(e=>e.date.startsWith(m)&&(!catF||e.category===catF)).reduce((s,e)=>s+e.processed,0));
+      const monthLabels = months.map(m => { const dt = new Date(m+'-01T00:00:00'); return dt.toLocaleDateString('en-IN',{month:'short',year:'2-digit'}); });
+      buildDailyChart(monthLabels, monthlyData, 'Monthly SKU output (all time)');
+    } else { buildDailyChart([], [], 'Monthly SKU output (all time)'); }
+    chartDays = null;
+  }
+
+  if(chartDays !== null) {
+    const dailyData = chartDays.map(d => S.entries.filter(e=>e.date===d&&(!catF||e.category===catF)).reduce((s,e)=>s+e.processed,0));
+    const labels = chartDays.map(d => { const dt = new Date(d+'T00:00:00'); return dt.toLocaleDateString('en-IN',{day:'numeric',month:'short'}); });
+    buildDailyChart(labels, dailyData, chartLabel);
+  }
+
+  // Error type chart
+  const errTypes = {};
+  errors.forEach(e => { if(e.errorType) errTypes[e.errorType] = (errTypes[e.errorType]||0) + e.errorSkus; });
+  buildErrorChart(Object.keys(errTypes), Object.values(errTypes));
+
+  // Recent QC
+  const recentQC = [...S.qcErrors].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
+  document.getElementById('dash-qc-tbody').innerHTML = recentQC.length ? recentQC.map(e => `<tr>
+    <td class="mono">${e.date}</td>
+    <td><div style="display:flex;align-items:center;gap:6px">${avatar(e.poc, 22)}<span>${e.poc}</span></div></td>
+    <td><span class="badge badge-gray" style="font-size:10px">${e.ticket}</span></td>
+    <td>${e.category||'–'}</td>
+    <td><span style="color:#f25c5c;font-weight:600">${e.errorSkus}</span></td>
+    <td><span style="font-size:11px;color:#8b90a0">${e.errorType||'–'}</span></td>
+    <td><div style="display:flex;align-items:center;gap:6px">${avatar(e.reviewer||'?', 22)}<span style="font-size:11px;color:#8b90a0">${e.reviewer||'–'}</span></div></td>
+  </tr>`).join('') : '<tr><td colspan="7" class="empty">No QC errors logged</td></tr>';
+}
+
+// ─── LOG WORK ────────────────────────────────────────────
+async function addEntry() {
+  const stepVal = document.getElementById('e-step').value;
+  const now = new Date();
+  const ts = now.toLocaleDateString('en-IN',{day:'numeric',month:'short'}) + ' ' + now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  const e = {
+    date:        document.getElementById('e-date').value || today(),
+    poc:         document.getElementById('e-poc').value,
+    ticket:      document.getElementById('e-ticket').value.trim(),
+    category:    document.getElementById('e-cat').value,
+    ticketSkus:  parseInt(document.getElementById('e-tskus').value)||0,
+    processed:   parseInt(document.getElementById('e-pskus').value)||0,
+    step:        stepVal,
+    stepHistory: stepVal ? [{ step: stepVal, at: ts, changedTo: stepVal }] : [],
+    notes:       document.getElementById('e-notes').value.trim()
+  };
+  if(!e.poc) { toast('Please select a POC', 'error'); return; }
+  if(!e.ticket) { toast('Please enter a Ticket ID', 'error'); return; }
+  if(!e.processed) { toast('Please enter SKUs processed', 'error'); return; }
+  toast('Saving…', 'syncing');
+  try {
+    const saved = await dbInsertEntry(e);
+    e.id = saved.id;
+    S.entries.unshift(e);
+    renderTodayEntries(); clearLogForm(); toast('Entry saved ✓');
+  } catch(err) { toast('Save failed – check connection', 'error'); }
+}
+
+async function deleteEntry(id) {
+  if(!confirm('Delete this entry?')) return;
+  try {
+    await dbDeleteEntry(id);
+    S.entries = S.entries.filter(e => e.id !== id);
+    renderTodayEntries(); renderRecords(); toast('Entry deleted');
+  } catch(err) { toast('Delete failed', 'error'); }
+}
+
+function clearLogForm() {
+  ['e-ticket','e-tskus','e-pskus','e-notes'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('e-step').value='';
+  document.getElementById('e-date').value = today();
+}
+
+function renderTodayEntries() {
+  const t = document.getElementById('e-date').value || today();
+  const entries = S.entries.filter(e => e.date === t);
+  document.getElementById('today-count').textContent = entries.length + ' entries';
+
+  document.getElementById('today-tbody').innerHTML = entries.length ? entries.map(e => `<tr>
+    <td><span class="badge badge-gray" style="font-size:10px">${e.ticket}</span></td>
+    <td><div style="display:flex;align-items:center;gap:6px">${avatar(e.poc,22)}<span>${e.poc}</span></div></td>
+    <td style="font-size:11px;color:#8b90a0">${e.category||'–'}</td>
+    <td style="font-weight:600">${e.processed}</td>
+    <td>${stepUpdateCell(e)}</td>
+    <td><button class="btn btn-danger" onclick="deleteEntry(${e.id})">✕</button></td>
+  </tr>`).join('') : '<tr><td colspan="6" class="empty">No entries for this date</td></tr>';
+
+  // Stats
+  const totalSKUs = entries.reduce((s,e)=>s+e.processed,0);
+  const byPOC = {};
+  entries.forEach(e => { byPOC[e.poc] = (byPOC[e.poc]||0) + e.processed; });
+  document.getElementById('today-stats').innerHTML = totalSKUs ? `
+    <div style="display:flex;gap:20px;flex-wrap:wrap">
+      <div><div style="font-size:11px;color:#8b90a0;margin-bottom:4px">Total SKUs today</div><div style="font-size:20px;font-weight:600;color:#4f8ef7">${totalSKUs}</div></div>
+      ${Object.entries(byPOC).map(([p,s])=>`<div><div style="font-size:11px;color:#8b90a0;margin-bottom:4px">${p}</div><div style="font-size:18px;font-weight:600">${s}</div></div>`).join('')}
+    </div>` : '<div style="color:#545869;font-size:13px">No entries yet today</div>';
+}
+
+// ─── QC ERRORS ───────────────────────────────────────────
+async function addQCEntry() {
+  const e = {
+    date:        document.getElementById('q-date').value || today(),
+    poc:         document.getElementById('q-poc').value,
+    reviewer:    document.getElementById('q-reviewer').value,
+    ticket:      document.getElementById('q-ticket').value.trim(),
+    category:    document.getElementById('q-cat').value,
+    errorSkus:   parseInt(document.getElementById('q-eskus').value)||0,
+    errorType:   document.getElementById('q-etype').value,
+    description: document.getElementById('q-desc').value.trim()
+  };
+  if(!e.poc) { toast('Select the working POC', 'error'); return; }
+  if(!e.ticket) { toast('Enter the Ticket ID', 'error'); return; }
+  if(!e.errorSkus) { toast('Enter error SKU count', 'error'); return; }
+  toast('Saving…', 'syncing');
+  try {
+    const saved = await dbInsertQC(e);
+    e.id = saved.id;
+    S.qcErrors.unshift(e);
+    renderQCList(); clearQCForm(); toast('QC error logged ✓');
+  } catch(err) { toast('Save failed – check connection', 'error'); }
+}
+
+async function deleteQC(id) {
+  if(!confirm('Delete this QC entry?')) return;
+  try {
+    await dbDeleteQC(id);
+    S.qcErrors = S.qcErrors.filter(e=>e.id!==id);
+    renderQCList(); toast('QC entry deleted');
+  } catch(err) { toast('Delete failed', 'error'); }
+}
+
+function clearQCForm() {
+  ['q-ticket','q-eskus','q-desc'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('q-etype').value='';
+  document.getElementById('q-date').value=today();
+}
+
+function renderQCList() {
+  const recent = [...S.qcErrors].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,30);
+  document.getElementById('qc-count').textContent = S.qcErrors.length + ' total errors';
+  document.getElementById('qc-tbody').innerHTML = recent.length ? recent.map(e=>`<tr>
+    <td class="mono">${e.date}</td>
+    <td><div style="display:flex;align-items:center;gap:6px">${avatar(e.poc,22)}<span>${e.poc}</span></div></td>
+    <td><span class="badge badge-gray" style="font-size:10px">${e.ticket}</span></td>
+    <td style="color:#f25c5c;font-weight:600">${e.errorSkus}</td>
+    <td style="font-size:11px;color:#8b90a0">${e.errorType||'–'}</td>
+    <td><button class="btn btn-danger" onclick="deleteQC(${e.id})">✕</button></td>
+  </tr>`).join('') : '<tr><td colspan="6" class="empty">No QC errors logged</td></tr>';
+}
+
+// ─── RECORDS ─────────────────────────────────────────────
+function renderRecords() {
+  const pocF = document.getElementById('r-poc').value;
+  const catF = document.getElementById('r-cat').value;
+  const from = document.getElementById('r-from').value;
+  const to   = document.getElementById('r-to').value;
+  let data = [...S.entries].sort((a,b)=>b.date.localeCompare(a.date));
+  if(pocF) data = data.filter(e=>e.poc===pocF);
+  if(catF) data = data.filter(e=>e.category===catF);
+  if(from) data = data.filter(e=>e.date>=from);
+  if(to)   data = data.filter(e=>e.date<=to);
+  document.getElementById('r-count').textContent = `— ${data.length} records`;
+  document.getElementById('r-tbody').innerHTML = data.length ? data.map(e=>`<tr>
+    <td class="mono">${e.date}</td>
+    <td><div style="display:flex;align-items:center;gap:6px">${avatar(e.poc,22)}<span>${e.poc}</span></div></td>
+    <td><span class="badge badge-gray" style="font-size:10px">${e.ticket}</span></td>
+    <td style="font-size:11px">${e.category||'–'}</td>
+    <td>${e.ticketSkus||'–'}</td>
+    <td style="font-weight:600">${e.processed}</td>
+    <td style="min-width:200px">${stepUpdateCell(e)}</td>
+    <td style="font-size:11px;color:#8b90a0">${e.notes||'–'}</td>
+    <td><button class="btn btn-danger" onclick="deleteEntry(${e.id})">✕</button></td>
+  </tr>`).join('') : '<tr><td colspan="9" class="empty">No records found</td></tr>';
+}
+
+function clearRecordFilters() {
+  ['r-poc','r-cat'].forEach(id=>{document.getElementById(id).value='';});
+  ['r-from','r-to'].forEach(id=>{document.getElementById(id).value='';});
+  renderRecords();
+}
+
+// ─── SETTINGS ────────────────────────────────────────────
+function renderSettings() {
+  document.getElementById('poc-chips').innerHTML = S.pocs.map((p,i)=>`
+    <span class="chip">${p}<span class="chip-remove" onclick="removePOC(${i})">×</span></span>`).join('');
+  document.getElementById('cat-chips').innerHTML = S.categories.map((c,i)=>`
+    <span class="chip">${c}<span class="chip-remove" onclick="removeCategory(${i})">×</span></span>`).join('');
+}
+
+async function addPOC() {
+  const v = document.getElementById('new-poc').value.trim();
+  if(!v || S.pocs.includes(v)) { toast('POC already exists or name empty', 'error'); return; }
+  S.pocs.push(v);
+  await dbSaveSettings();
+  populateAllSelects(); renderSettings();
+  document.getElementById('new-poc').value = ''; toast(`${v} added`);
+}
+async function removePOC(i) {
+  const name = S.pocs[i]; S.pocs.splice(i,1);
+  await dbSaveSettings();
+  populateAllSelects(); renderSettings(); toast(`${name} removed`);
+}
+
+async function addCategory() {
+  const v = document.getElementById('new-cat').value.trim();
+  if(!v || S.categories.includes(v)) { toast('Category already exists or name empty', 'error'); return; }
+  S.categories.push(v);
+  await dbSaveSettings();
+  populateAllSelects(); renderSettings();
+  document.getElementById('new-cat').value = ''; toast(`${v} added`);
+}
+async function removeCategory(i) {
+  const name = S.categories[i]; S.categories.splice(i,1);
+  await dbSaveSettings();
+  populateAllSelects(); renderSettings(); toast(`${name} removed`);
+}
+
+async function clearAllData() {
+  if(!confirm('Delete ALL work log and QC entries from the shared database? This cannot be undone.')) return;
+  try {
+    await Promise.all([
+      sbFetch('work_logs?id=gt.0', 'DELETE'),
+      sbFetch('qc_errors?id=gt.0', 'DELETE')
+    ]);
+    S.entries = []; S.qcErrors = [];
+    renderQCList(); renderTodayEntries(); toast('All data cleared');
+  } catch(err) { toast('Clear failed', 'error'); }
+}
+
+// ─── EXPORT ──────────────────────────────────────────────
+function exportCSV() {
+  const headers = ['Date','POC','Ticket ID','Category','SKUs in ticket','SKUs processed','Current Step','Step history','Notes'];
+  const workRows = S.entries.map(e => {
+    const history = (e.stepHistory||[]).map(h=>`S${h.step}@${h.at}`).join(' → ');
+    return [e.date,e.poc,e.ticket,e.category,e.ticketSkus,e.processed,STEPS[e.step]||'',history,e.notes].join(',');
+  });
+  const qcHeaders = ['Date','Working POC','QC POC','Ticket','Category','Error SKUs','Error type','Description'];
+  const qcRows = S.qcErrors.map(e => [e.date,e.poc,e.reviewer,e.ticket,e.category,e.errorSkus,e.errorType,e.description].join(','));
+  const csv = [
+    '=== WORK LOG ===', headers.join(','), ...workRows, '',
+    '=== QC ERRORS ===', qcHeaders.join(','), ...qcRows
+  ].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = `sku-tracker-${today()}.csv`; a.click();
+  toast('CSV exported');
+}
+
+// manual refresh button
+async function manualRefresh() {
+  await syncFromDB();
+  refreshCurrentPage();
+  toast('Data refreshed ✓');
+}
+
+// ─── INIT ────────────────────────────────────────────────
+async function refreshCurrentPage() {
+  const cur = document.querySelector('.nav-item.active');
+  if(!cur) return;
+  const page = cur.getAttribute('onclick').match(/'(\w+)'/)[1];
+  if(page==='dashboard') renderDashboard();
+  if(page==='records')   renderRecords();
+  if(page==='log')       renderTodayEntries();
+  if(page==='qc')        renderQCList();
+  if(page==='settings')  renderSettings();  // ← keep settings chips in sync too
+}
+
+async function init() {
+  document.getElementById('e-date').value = today();
+  document.getElementById('q-date').value = today();
+  const d = new Date();
+  document.getElementById('sidebar-date').textContent = d.toLocaleDateString('en-IN', {weekday:'short', day:'numeric', month:'short', year:'numeric'});
+  // Don't populate selects yet — wait for Supabase data first
+  setStatus('Connecting…', 'syncing');
+  const ok = await syncFromDB();  // this calls syncSettings → populateAllSelects inside
+  renderDashboard();
+  renderSettings();  // render chips with Supabase data right after load
+  if(ok) {
+    // auto-refresh every 30 seconds
+    setInterval(async () => {
+      await syncFromDB();
+      refreshCurrentPage();
+    }, 30000);
+  }
+}
+init();
+</script>
+</body>
+</html>
