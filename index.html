@@ -1117,7 +1117,7 @@ function renderDashboard() {
       const end = new Date(to+'T00:00:00');
       const diffDays = Math.round((end-d)/(1000*60*60*24));
       if(diffDays <= 60) {
-        while(d <= end) { chartDays.push(d.toISOString().split('T')[0]); d.setDate(d.getDate()+1); }
+        while(d <= end) { chartDays.push(d.toLocaleDateString('en-CA')); d.setDate(d.getDate()+1); }
         chartLabel = 'Daily SKU output ('+from+' to '+to+')';
       } else {
         const months = [];
